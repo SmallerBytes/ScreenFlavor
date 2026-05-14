@@ -1,0 +1,261 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+html:not(.overlay) {
+  color: #1a1a1a;
+  background: #f4f1ea;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.launcher {
+  padding: 1.75rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.1rem;
+  min-height: 100vh;
+  background: radial-gradient(circle at 30% 20%, #fff8ee, #e8dfd0);
+}
+
+.launcher h1 {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 1.75rem;
+  text-align: center;
+}
+
+.hub-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.brand-mark {
+  font-size: 2.25rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
+}
+
+.tagline {
+  margin: 0;
+  text-align: center;
+  line-height: 1.45;
+  max-width: 24rem;
+  color: #4a4540;
+  font-size: 0.92rem;
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.game-card {
+  margin: 0;
+  padding: 1rem 1.1rem 1.1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(60, 50, 40, 0.1);
+  box-shadow: 0 6px 20px rgba(40, 30, 20, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.game-card h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2c2824;
+}
+
+.game-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.game-blurb {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: #524c46;
+}
+
+.game-card .btn-play {
+  margin-top: 0.35rem;
+  align-self: flex-start;
+}
+
+.game-card--soon {
+  opacity: 0.88;
+}
+
+.btn-soon {
+  font: inherit;
+  margin-top: 0.35rem;
+  align-self: flex-start;
+  cursor: not-allowed;
+  border: none;
+  border-radius: 10px;
+  padding: 0.65rem 0.95rem;
+  background: #e4dfd8;
+  color: #6f6962;
+  font-weight: 600;
+}
+
+.hub-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding-top: 0.25rem;
+}
+
+.hint {
+  margin: 0 auto;
+  max-width: 24rem;
+  text-align: center;
+  line-height: 1.55;
+  font-size: 0.82rem;
+  color: #6b6560;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  transition: transform 0.08s ease, box-shadow 0.12s ease;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.btn-play {
+  background: linear-gradient(180deg, #6cbf6a, #4a9c48);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(74, 156, 72, 0.45);
+}
+
+.btn-play:hover {
+  box-shadow: 0 6px 18px rgba(74, 156, 72, 0.55);
+}
+
+.btn-quit {
+  background: #e8e3dc;
+  color: #4a4743;
+}
+
+.last-run {
+  min-height: 1.25rem;
+  font-size: 0.88rem;
+  color: #5c574f;
+  text-align: center;
+}
+
+/* Overlay */
+html.overlay,
+html.overlay body,
+html.overlay body.overlay {
+  margin: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
+  color: #eae6df;
+  cursor: none;
+}
+
+html.overlay #overlay-root {
+  background: transparent !important;
+}
+
+.overlay-stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: transparent;
+}
+
+html.overlay .snail {
+  visibility: hidden;
+}
+
+.snail {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  margin-left: -36px;
+  margin-top: -36px;
+  font-size: 56px;
+  line-height: 72px;
+  text-align: center;
+  user-select: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: none;
+}
+
+.hud {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(20, 18, 16, 0.55);
+  color: #f5f2ec;
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.lose-banner {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 6, 0.45);
+  pointer-events: none;
+}
+
+.lose-banner[hidden] {
+  display: none !important;
+}
+
+.lose-inner {
+  padding: 1.5rem 2rem;
+  border-radius: 14px;
+  background: rgba(28, 24, 20, 0.92);
+  color: #faf6ef;
+  text-align: center;
+  max-width: 22rem;
+}
+
+.lose-inner h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.35rem;
+}
+
+.lose-inner p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.95rem;
+}
