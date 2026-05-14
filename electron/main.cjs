@@ -383,7 +383,7 @@ async function runCheckForUpdatesFromMenu() {
       message: `A newer release is available (${verLabel}).`,
       detail: hasInstaller
         ? `You are running v${currentVersion}. Download the installer here, or open the release page in your browser.`
-        : `You are running v${currentVersion}. No installer file for this system was found on the release. Open the release page to download manually.`,
+        : `You are running v${currentVersion}. The latest release has no Windows installer file yet (or it is still uploading). Wait for the GitHub Actions “Release artifacts” job to finish, then try again—or open the release page to download manually.`,
       buttons: hasInstaller
         ? ["Download update", "Open release page", "Close"]
         : ["Open release page", "Close"],

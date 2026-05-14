@@ -60,8 +60,12 @@ function pickInstallerFromReleaseAssets(assets, platform, productName) {
     const filtered = exes.filter((a) => {
       const n = lower(a.name);
       if (n.includes("blockmap")) return false;
+      if (n.includes("__uninstaller")) return false;
+      if (n.endsWith("uninstall.exe")) return false;
       return true;
     });
+    if (filtered.length === 0) return null;
+
     const score = (name) => {
       const n = lower(name);
       let s = 0;
@@ -70,7 +74,13 @@ function pickInstallerFromReleaseAssets(assets, platform, productName) {
       if (n.includes("x64") || n.includes("win64")) s += 2;
       return s;
     };
-    const sorted = [...filtered].sort((a, b) => score(b.name) - score(a.name));
+
+    const sorted = [...filtered].sort((a, b) => {
+      const ds = score(b.name) - score(a.name);
+      if (ds !== 0) return ds;
+      return (Number(b.size) || 0) - (Number(a.size) || 0);
+    });
+
     const pick = sorted[0];
     if (!pick?.browser_download_url || typeof pick.browser_download_url !== "string") return null;
     return {
@@ -114,12 +124,12 @@ function pickInstallerFromReleaseAssets(assets, platform, productName) {
  */
 async function checkGitHubLatestRelease(repo, currentVersion, productName) {
   const url = `https://api.github.com/repos/${repo}/releases/latest`;
-  const res = await fetch(url, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      "User-Agent": "ScreenFlavor-update-check",
-    },
-  });
+  const headers = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "ScreenFlavor-update-check",
+  };
+
+  let res = await fetch(url, { headers });
 
   if (res.status === 404) {
     return {
@@ -142,7 +152,28 @@ async function checkGitHubLatestRelease(repo, currentVersion, productName) {
     };
   }
 
-  const data = await res.json();
+  let data = await res.json();
+
+  /** Wait for CI to attach assets right after a release is published. */
+  const tagName = typeof data.tag_name === "string" ? data.tag_name : "";
+  const tagCore = tagName.replace(/^v/i, "");
+  const newerThanCurrent = tagCore ? compareSemver(tagCore, currentVersion) === 1 : false;
+  let retries = 0;
+  const maxAssetRetries = 6;
+  const retryMs = 2000;
+  while (
+    retries < maxAssetRetries &&
+    newerThanCurrent &&
+    !data.draft &&
+    Array.isArray(data.assets) &&
+    data.assets.length === 0
+  ) {
+    retries++;
+    await new Promise((r) => setTimeout(r, retryMs));
+    res = await fetch(url, { headers });
+    if (!res.ok) break;
+    data = await res.json();
+  }
   const tag = typeof data.tag_name === "string" ? data.tag_name : "";
   const latestVersion = tag.replace(/^v/i, "") || tag || null;
   const cmp = latestVersion ? compareSemver(latestVersion, currentVersion) : 0;
