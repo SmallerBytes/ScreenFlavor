@@ -1,6 +1,6 @@
 {
   "name": "screenflavor",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Desktop screen mini-games (ScreenFlavor)",
   "repository": {
     "type": "git",
@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "concurrently -k \"vite\" \"wait-on http://127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "build:renderer": "vite build",
-    "build": "npm run build:renderer && electron-builder",
+    "build": "npm run build:renderer && electron-builder --publish never",
     "preview": "vite preview"
   },
   "dependencies": {},
@@ -27,6 +27,7 @@
   "build": {
     "appId": "com.screenflavor.app",
     "productName": "ScreenFlavor",
+    "publish": null,
     "icon": "electron/icon.png",
     "directories": {
       "output": "release"
