@@ -9,6 +9,7 @@ const {
   dialog,
 } = require("electron");
 const path = require("node:path");
+const { spawn } = require("node:child_process");
 const pkg = require(path.join(__dirname, "..", "package.json"));
 const {
   resolveRepoSlug,
@@ -188,6 +189,32 @@ function formatMb(bytes) {
 }
 
 /**
+ * Windows NSIS: run setup silently, then quit this app so files can be replaced.
+ * @param {string} setupExePath
+ * @param {(o: Electron.MessageBoxOptions) => Promise<Electron.MessageBoxReturnValue>} box
+ */
+function quitAndRunSilentNsisInstaller(setupExePath, box) {
+  const child = spawn(setupExePath, ["/S"], {
+    detached: true,
+    stdio: "ignore",
+  });
+
+  child.once("error", async (err) => {
+    await box({
+      type: "error",
+      title: "Update",
+      message: "Could not start the installer.",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  });
+
+  child.once("spawn", () => {
+    child.unref();
+    setImmediate(() => app.quit());
+  });
+}
+
+/**
  * @param {{ url: string; name: string; size: number }} installer
  * @param {BrowserWindow | undefined} parent
  */
@@ -238,25 +265,45 @@ async function runInstallerDownloadWithProgress(installer, parent) {
     }
     updateProgressWindow = null;
 
-    const { response } = await box({
-      type: "info",
-      title: "Download complete",
-      message: "The installer finished downloading.",
-      detail: destPath,
-      buttons: ["Run installer", "Show in folder", "Close"],
-      defaultId: 0,
-    });
-    if (response === 0) {
-      const err = await shell.openPath(destPath);
-      if (err) {
-        await box({
-          type: "warning",
-          message: "Could not launch the installer automatically.",
-          detail: err,
-        });
+    const isWinNsis = process.platform === "win32" && destPath.toLowerCase().endsWith(".exe");
+
+    if (isWinNsis) {
+      const { response } = await box({
+        type: "info",
+        title: "Update ready",
+        message: "Install this update now? ScreenFlavor will close, then setup will run silently.",
+        detail:
+          "When installation finishes, open ScreenFlavor again from the Start menu. If Windows asks for permission, allow the installer to run.",
+        buttons: ["Install and exit", "Open folder", "Later"],
+        defaultId: 0,
+        cancelId: 2,
+      });
+      if (response === 0) {
+        quitAndRunSilentNsisInstaller(destPath, box);
+      } else if (response === 1) {
+        shell.showItemInFolder(destPath);
       }
-    } else if (response === 1) {
-      shell.showItemInFolder(destPath);
+    } else {
+      const { response } = await box({
+        type: "info",
+        title: "Download complete",
+        message: "The installer finished downloading.",
+        detail: destPath,
+        buttons: ["Open", "Show in folder", "Close"],
+        defaultId: 0,
+      });
+      if (response === 0) {
+        const err = await shell.openPath(destPath);
+        if (err) {
+          await box({
+            type: "warning",
+            message: "Could not open the file automatically.",
+            detail: err,
+          });
+        }
+      } else if (response === 1) {
+        shell.showItemInFolder(destPath);
+      }
     }
   } catch (e) {
     const err = /** @type {{ name?: string; message?: unknown }} */ (e);
