@@ -5,6 +5,8 @@ export default defineConfig({
   root: ".",
   base: "./",
   server: {
+    port: 5188,
+    strictPort: true,
     watch: {
       ignored: ["**/release/**", "**/node_modules/**"],
     },
