@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Downloading update</title>
+    <style>
+      body {
+        font-family: "Segoe UI", system-ui, sans-serif;
+        margin: 0;
+        padding: 18px 20px 16px;
+        background: #f4f1ea;
+        color: #1a1a1a;
+      }
+      h1 {
+        font-size: 0.95rem;
+        margin: 0 0 12px;
+        font-weight: 600;
+      }
+      progress {
+        width: 100%;
+        height: 22px;
+        accent-color: #3d6fa8;
+      }
+      #detail {
+        font-size: 0.72rem;
+        color: #555;
+        margin-top: 10px;
+        min-height: 1.3em;
+      }
+      .actions {
+        margin-top: 14px;
+        text-align: right;
+      }
+      button {
+        font: inherit;
+        padding: 0.45rem 0.95rem;
+        border-radius: 8px;
+        border: 1px solid rgba(60, 50, 40, 0.2);
+        background: #fff;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">Downloading update…</h1>
+    <progress id="bar" max="100" value="0"></progress>
+    <div id="detail"></div>
+    <div class="actions">
+      <button type="button" id="action-btn">Cancel</button>
+    </div>
+    <script>
+      const bar = document.getElementById("bar");
+      const detail = document.getElementById("detail");
+      const title = document.getElementById("title");
+      const actionBtn = document.getElementById("action-btn");
+
+      const unsub = window.updateProgress.onProgress((payload) => {
+        if (payload.error) {
+          title.textContent = "Download failed";
+          detail.textContent = payload.error;
+          bar.removeAttribute("value");
+          actionBtn.textContent = "Close";
+          actionBtn.disabled = false;
+          return;
+        }
+        if (payload.indeterminate) {
+          bar.removeAttribute("value");
+        } else if (typeof payload.percent === "number") {
+          bar.setAttribute("max", "100");
+          bar.value = payload.percent;
+        }
+        if (payload.detailText) detail.textContent = payload.detailText;
+      });
+
+      window.addEventListener("beforeunload", () => {
+        unsub();
+      });
+
+      actionBtn.addEventListener("click", () => {
+        if (actionBtn.textContent === "Close") {
+          window.updateProgress.closeWindow();
+          return;
+        }
+        actionBtn.disabled = true;
+        window.updateProgress.cancelDownload();
+      });
+    </script>
+  </body>
+</html>

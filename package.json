@@ -1,7 +1,11 @@
 {
   "name": "screenflavor",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Desktop screen mini-games (ScreenFlavor)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SmallerBytes/ScreenFlavor.git"
+  },
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {

@@ -1,4 +1,5 @@
 import "./style.css";
+import type { SnailLaunchSettings } from "./vite-env";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("Missing #app");
@@ -18,6 +19,25 @@ app.innerHTML = `
         <p class="game-blurb">
           A snail appears on your screen and slowly homes in on your cursor. If it touches you, you lose.
         </p>
+
+        <fieldset class="snail-settings">
+          <legend class="snail-settings-legend">Snail options</legend>
+
+          <p class="snail-look-note">
+            <strong>Look:</strong> classic snail for now. Different snail characters will be added when the art is ready.
+          </p>
+
+          <div class="snail-setting-block">
+            <label class="snail-setting-label" for="snail-size">Size <span class="snail-value" id="snail-size-val">100%</span></label>
+            <input type="range" id="snail-size" min="50" max="160" value="100" step="1" />
+          </div>
+
+          <div class="snail-setting-block">
+            <label class="snail-setting-label" for="snail-speed">Speed <span class="snail-value" id="snail-speed-val">100%</span></label>
+            <input type="range" id="snail-speed" min="25" max="220" value="100" step="1" />
+          </div>
+        </fieldset>
+
         <button type="button" class="btn-play game-start">Play</button>
       </article>
 
@@ -37,6 +57,7 @@ app.innerHTML = `
     <div class="last-run" id="last-run" aria-live="polite"></div>
 
     <div class="hub-footer">
+      <p class="hub-footer-meta"><span id="app-version" class="app-version"></span> · Updates: <strong>Help</strong> → <strong>Check for Updates…</strong></p>
       <button type="button" class="btn-quit" id="btn-quit">Quit ScreenFlavor</button>
     </div>
   </div>
@@ -46,13 +67,42 @@ const lastRun = document.querySelector<HTMLDivElement>("#last-run");
 const btnQuit = document.querySelector<HTMLButtonElement>("#btn-quit");
 const snailCard = document.querySelector<HTMLElement>('[data-game="snail"]');
 const snailPlay = snailCard?.querySelector<HTMLButtonElement>(".game-start");
+const appVersionEl = document.querySelector<HTMLSpanElement>("#app-version");
+const snailSize = document.querySelector<HTMLInputElement>("#snail-size");
+const snailSpeed = document.querySelector<HTMLInputElement>("#snail-speed");
+const snailSizeVal = document.querySelector<HTMLSpanElement>("#snail-size-val");
+const snailSpeedVal = document.querySelector<HTMLSpanElement>("#snail-speed-val");
 
-if (!lastRun || !btnQuit || !snailPlay) {
+if (
+  !lastRun ||
+  !btnQuit ||
+  !snailPlay ||
+  !appVersionEl ||
+  !snailSize ||
+  !snailSpeed ||
+  !snailSizeVal ||
+  !snailSpeedVal
+) {
   throw new Error("Launcher DOM missing");
 }
 
+function syncRangeLabel(input: HTMLInputElement, out: HTMLSpanElement) {
+  out.textContent = `${input.value}%`;
+}
+
+snailSize.addEventListener("input", () => syncRangeLabel(snailSize, snailSizeVal));
+snailSpeed.addEventListener("input", () => syncRangeLabel(snailSpeed, snailSpeedVal));
+
+void window.screenFlavor.getAppVersion().then((v) => {
+  appVersionEl.textContent = `v${v}`;
+});
+
 snailPlay.addEventListener("click", async () => {
-  await window.screenFlavor.startGame("snail");
+  const settings: SnailLaunchSettings = {
+    sizePercent: Number(snailSize.value),
+    speedPercent: Number(snailSpeed.value),
+  };
+  await window.screenFlavor.startGame("snail", settings);
 });
 
 btnQuit.addEventListener("click", async () => {

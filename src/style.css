@@ -101,6 +101,63 @@ body {
   align-self: flex-start;
 }
 
+.snail-settings {
+  margin: 0.15rem 0 0;
+  padding: 0.65rem 0.75rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(60, 50, 40, 0.12);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.snail-settings-legend {
+  padding: 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5c564e;
+}
+
+.snail-look-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #524c46;
+}
+
+.snail-look-note strong {
+  color: #3a3632;
+}
+
+.snail-setting-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.snail-setting-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #3a3632;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.snail-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #4a9c48;
+  font-size: 0.78rem;
+}
+
+.snail-settings input[type="range"] {
+  width: 100%;
+  accent-color: #4a9c48;
+}
+
 .game-card--soon {
   opacity: 0.88;
 }
@@ -120,9 +177,25 @@ body {
 
 .hub-footer {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
   margin-top: auto;
   padding-top: 0.25rem;
+}
+
+.hub-footer-meta {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #6b6560;
+  text-align: center;
+  max-width: 22rem;
+}
+
+.hub-footer-meta strong {
+  font-weight: 600;
+  color: #4a4540;
 }
 
 .hint {
@@ -168,6 +241,10 @@ button:active {
   font-size: 0.88rem;
   color: #5c574f;
   text-align: center;
+}
+
+.app-version {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Overlay */

@@ -1,8 +1,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("screenFlavor", {
-  startGame: (gameId) => ipcRenderer.invoke("game:start", gameId),
+  startGame: (gameId, snailSettings) =>
+    ipcRenderer.invoke("game:start", gameId, snailSettings),
+  getSnailLaunchSettings: () => ipcRenderer.invoke("snail:getLaunchSettings"),
   quitApp: () => ipcRenderer.invoke("app:quit"),
+  getAppVersion: () => ipcRenderer.invoke("app:getVersion"),
   onCursor: (handler) => {
     const wrapped = (_e, pos) => handler(pos);
     ipcRenderer.on("cursor", wrapped);
