@@ -189,14 +189,32 @@ function formatMb(bytes) {
 }
 
 /**
+ * NSIS installers from electron-builder accept /currentuser and /allusers; matching
+ * the running install scope makes silent upgrades reliable.
+ * @returns {string[]}
+ */
+function nsisSilentInstallArgs() {
+  const exe = process.execPath.replace(/\//g, "\\").toLowerCase();
+  if (exe.includes("\\appdata\\local\\programs\\")) {
+    return ["/S", "/currentuser"];
+  }
+  if (exe.includes("\\program files\\")) {
+    return ["/S", "/allusers"];
+  }
+  return ["/S"];
+}
+
+/**
  * Windows NSIS: run setup silently, then quit this app so files can be replaced.
  * @param {string} setupExePath
  * @param {(o: Electron.MessageBoxOptions) => Promise<Electron.MessageBoxReturnValue>} box
  */
 function quitAndRunSilentNsisInstaller(setupExePath, box) {
-  const child = spawn(setupExePath, ["/S"], {
+  const child = spawn(setupExePath, nsisSilentInstallArgs(), {
     detached: true,
     stdio: "ignore",
+    windowsHide: true,
+    cwd: path.dirname(setupExePath),
   });
 
   child.once("error", async (err) => {
@@ -259,31 +277,29 @@ async function runInstallerDownloadWithProgress(installer, parent) {
     });
 
     cancelActiveDownload = null;
-    if (updateProgressWindow && !updateProgressWindow.isDestroyed()) {
-      updateProgressWindow.removeAllListeners("closed");
-      updateProgressWindow.close();
-    }
-    updateProgressWindow = null;
 
     const isWinNsis = process.platform === "win32" && destPath.toLowerCase().endsWith(".exe");
 
     if (isWinNsis) {
-      const { response } = await box({
-        type: "info",
-        title: "Update ready",
-        message: "Install this update now? ScreenFlavor will close, then setup will run silently.",
-        detail:
-          "When installation finishes, open ScreenFlavor again from the Start menu. If Windows asks for permission, allow the installer to run.",
-        buttons: ["Install and exit", "Open folder", "Later"],
-        defaultId: 0,
-        cancelId: 2,
+      sendUpdateDownloadProgress({
+        percent: 100,
+        detailText: "Installing update… ScreenFlavor will close.",
+        indeterminate: true,
+        applying: true,
       });
-      if (response === 0) {
-        quitAndRunSilentNsisInstaller(destPath, box);
-      } else if (response === 1) {
-        shell.showItemInFolder(destPath);
+      await new Promise((r) => setTimeout(r, 450));
+      if (updateProgressWindow && !updateProgressWindow.isDestroyed()) {
+        updateProgressWindow.removeAllListeners("closed");
+        updateProgressWindow.close();
       }
+      updateProgressWindow = null;
+      quitAndRunSilentNsisInstaller(destPath, box);
     } else {
+      if (updateProgressWindow && !updateProgressWindow.isDestroyed()) {
+        updateProgressWindow.removeAllListeners("closed");
+        updateProgressWindow.close();
+      }
+      updateProgressWindow = null;
       const { response } = await box({
         type: "info",
         title: "Download complete",
@@ -382,7 +398,7 @@ async function runCheckForUpdatesFromMenu() {
       title: "Update available",
       message: `A newer release is available (${verLabel}).`,
       detail: hasInstaller
-        ? `You are running v${currentVersion}. Download the installer here, or open the release page in your browser.`
+        ? `You are running v${currentVersion}. “Download update” downloads and installs in the background, then ScreenFlavor closes. You may see a brief Windows security prompt. When it finishes, open ScreenFlavor again from the Start menu.`
         : `You are running v${currentVersion}. The latest release has no Windows installer file yet (or it is still uploading). Wait for the GitHub Actions “Release artifacts” job to finish, then try again—or open the release page to download manually.`,
       buttons: hasInstaller
         ? ["Download update", "Open release page", "Close"]

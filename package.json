@@ -1,6 +1,6 @@
 {
   "name": "screenflavor",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Desktop screen mini-games (ScreenFlavor)",
   "repository": {
     "type": "git",
@@ -42,8 +42,10 @@
       ]
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "oneClick": true,
+      "allowElevation": true,
+      "perMachine": false,
+      "runAfterFinish": true
     }
   }
 }

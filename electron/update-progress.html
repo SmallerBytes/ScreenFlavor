@@ -68,6 +68,12 @@
           actionBtn.disabled = false;
           return;
         }
+        if (payload.applying) {
+          title.textContent = "Installing update…";
+          actionBtn.disabled = true;
+          bar.setAttribute("max", "100");
+          bar.value = 100;
+        }
         if (payload.indeterminate) {
           bar.removeAttribute("value");
         } else if (typeof payload.percent === "number") {
