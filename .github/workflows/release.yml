@@ -24,8 +24,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Explicit --publish never avoids electron-builder v26 implicit publish on tags
+      # (which requires GH_TOKEN) even if an old tag lacks the fix in package.json scripts.
       - name: Build Windows installer
-        run: npm run build
+        run: npm run build:renderer && npx electron-builder --publish never
 
       - name: Upload NSIS setup to GitHub Release
         shell: pwsh
