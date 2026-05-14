@@ -10,6 +10,10 @@ export default defineConfig({
     strictPort: true,
     watch: {
       ignored: ["**/release/**", "**/node_modules/**"],
+      awaitWriteFinish: {
+        stabilityThreshold: 250,
+        pollInterval: 50,
+      },
     },
   },
   build: {
