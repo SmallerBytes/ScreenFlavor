@@ -442,3 +442,56 @@ html.overlay .snail {
   line-height: 1.35;
   color: var(--crt-text-dim);
 }
+
+/* Goblin overlay — show cursor; clicks only register on the goblin hit box (main toggles forwarding) */
+html.overlay.goblin,
+html.overlay.goblin body,
+html.overlay.goblin body.overlay {
+  cursor: auto;
+}
+
+.goblin {
+  position: absolute;
+  width: 78px;
+  height: 78px;
+  margin-left: -39px;
+  margin-top: -39px;
+  font-size: 56px;
+  line-height: 78px;
+  text-align: center;
+  user-select: none;
+  cursor: pointer;
+  text-shadow:
+    0 0 8px rgba(255, 106, 22, 0.55),
+    2px 2px 0 #000;
+  transition: none;
+  z-index: 2;
+}
+
+.goblin--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.goblin--idle {
+  animation: goblin-bob 0.88s ease-in-out infinite;
+}
+
+@keyframes goblin-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.goblin--falling {
+  animation: none !important;
+  transition:
+    transform 0.82s cubic-bezier(0.45, 0, 0.75, 0.2),
+    opacity 0.82s ease-in;
+  transform: translateY(calc(100vh + 120px)) rotate(24deg) scale(0.88);
+  opacity: 0;
+}

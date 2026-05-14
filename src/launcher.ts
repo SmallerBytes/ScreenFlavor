@@ -41,16 +41,21 @@ app.innerHTML = `
         <button type="button" class="btn-play game-start">Play</button>
       </article>
 
-      <article class="game-card game-card--soon" aria-disabled="true">
-        <div class="game-icon" aria-hidden="true">✨</div>
-        <h2>More flavors</h2>
-        <p class="game-blurb">Additional screen games will land here over time.</p>
-        <button type="button" class="btn-soon" disabled>Coming soon</button>
+      <article class="game-card" data-game="goblin">
+        <div class="game-icon" aria-hidden="true">🧌</div>
+        <h2>The Goblin</h2>
+        <p class="game-blurb">
+          A goblin dashes in from the edge of your desktop, nudges a real shortcut to a new spot (Windows), then
+          dares you to click him. Spank him and he plummets off-screen.
+        </p>
+        <button type="button" class="btn-play" id="goblin-start">Play</button>
       </article>
     </section>
 
     <p class="hint">
-      While a game runs, your mouse still reaches apps underneath.
+      While <strong>The Snail</strong> runs, your mouse still reaches apps underneath.
+      <strong>The Goblin</strong> only captures clicks on the goblin so you can swat him; desktop icon shuffle is
+      Windows-only.
       Press <strong>Ctrl+Shift+Q</strong> (Mac: <strong>Cmd+Shift+Q</strong>) anytime to stop.
     </p>
 
@@ -72,11 +77,13 @@ const snailSize = document.querySelector<HTMLInputElement>("#snail-size");
 const snailSpeed = document.querySelector<HTMLInputElement>("#snail-speed");
 const snailSizeVal = document.querySelector<HTMLSpanElement>("#snail-size-val");
 const snailSpeedVal = document.querySelector<HTMLSpanElement>("#snail-speed-val");
+const goblinStart = document.querySelector<HTMLButtonElement>("#goblin-start");
 
 if (
   !lastRun ||
   !btnQuit ||
   !snailPlay ||
+  !goblinStart ||
   !appVersionEl ||
   !snailSize ||
   !snailSpeed ||
@@ -105,6 +112,10 @@ snailPlay.addEventListener("click", async () => {
   await window.screenFlavor.startGame("snail", settings);
 });
 
+goblinStart.addEventListener("click", async () => {
+  await window.screenFlavor.startGame("goblin");
+});
+
 btnQuit.addEventListener("click", async () => {
   await window.screenFlavor.quitApp();
 });
@@ -117,6 +128,14 @@ window.screenFlavor.onLastRun(({ seconds, gameId }) => {
   }
   if (gameId === "snail") {
     lastRun.textContent = `The Snail — last run: you survived ${s}s.`;
+    return;
+  }
+  if (gameId === "goblin") {
+    if (seconds < 0) {
+      lastRun.textContent = `The Goblin — he got away after ${(-seconds).toFixed(1)}s. Try again!`;
+    } else {
+      lastRun.textContent = `The Goblin — spanked in ${s}s!`;
+    }
     return;
   }
   lastRun.textContent = `Last run: ${s}s.`;

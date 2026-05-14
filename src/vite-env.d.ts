@@ -10,8 +10,18 @@ export type SnailLaunchSettings = {
   speedPercent: number;
 };
 
+export type DesktopShuffleResult = {
+  ok: boolean;
+  skipped?: boolean;
+  message?: string;
+};
+
+type GoblinHitRegion = { x: number; y: number; w: number; h: number };
+
 type ScreenFlavorApi = {
   startGame: (gameId: string, snailSettings?: SnailLaunchSettings) => Promise<boolean>;
+  shuffleDesktopIcon: () => Promise<DesktopShuffleResult>;
+  setGoblinHitRegion: (rect: GoblinHitRegion | null) => void;
   getSnailLaunchSettings: () => Promise<SnailLaunchSettings>;
   quitApp: () => Promise<void>;
   getAppVersion: () => Promise<string>;

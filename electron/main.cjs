@@ -9,7 +9,8 @@ const {
   dialog,
 } = require("electron");
 const path = require("node:path");
-const { spawn } = require("node:child_process");
+const fs = require("node:fs");
+const { spawn, execFile } = require("node:child_process");
 const pkg = require(path.join(__dirname, "..", "package.json"));
 const {
   resolveRepoSlug,
@@ -31,6 +32,9 @@ let overlay = null;
 let cursorTimer = null;
 /** @type {string | null} */
 let activeGameId = null;
+
+/** @type {{ x: number; y: number; w: number; h: number } | null} */
+let goblinHitScreenRect = null;
 
 /**
  * @typedef {{ sizePercent: number; speedPercent: number }} SnailLaunchSettings
@@ -88,6 +92,7 @@ function stopCursorPoll() {
     clearInterval(cursorTimer);
     cursorTimer = null;
   }
+  goblinHitScreenRect = null;
 }
 
 function registerGameShortcuts() {
@@ -443,8 +448,33 @@ async function runCheckForUpdatesFromMenu() {
   });
 }
 
+function showCopyrightFromMenu() {
+  const parent = menuParentWindow();
+  const opts = {
+    type: "info",
+    title: "ScreenFlavor",
+    message: `Copyright © ${new Date().getFullYear()} Michael Hernandez.`,
+    detail:
+      "ScreenFlavor was created by Michael Hernandez.\n\nAll rights reserved.",
+    buttons: ["OK"],
+  };
+  if (parent && !parent.isDestroyed()) {
+    void dialog.showMessageBox(parent, opts);
+  } else {
+    void dialog.showMessageBox(opts);
+  }
+}
+
 function installAppMenu() {
   const isMac = process.platform === "darwin";
+
+  const fileCopyrightSubmenu = /** @type {Electron.MenuItemConstructorOptions[]} */ ([
+    {
+      label: "Copyright…",
+      click: () => showCopyrightFromMenu(),
+    },
+    { type: "separator" },
+  ]);
 
   /** @type {Electron.MenuItemConstructorOptions[]} */
   const template = isMac
@@ -459,7 +489,7 @@ function installAppMenu() {
         },
         {
           label: "File",
-          submenu: [{ role: "close" }],
+          submenu: [...fileCopyrightSubmenu, { role: "close" }],
         },
         {
           role: "help",
@@ -474,7 +504,7 @@ function installAppMenu() {
     : [
         {
           label: "File",
-          submenu: [{ role: "quit", label: "Exit" }],
+          submenu: [...fileCopyrightSubmenu, { role: "quit", label: "Exit" }],
         },
         {
           role: "help",
@@ -493,7 +523,7 @@ function installAppMenu() {
 function createLauncher() {
   launcher = new BrowserWindow({
     width: 480,
-    height: 780,
+    height: 880,
     resizable: false,
     maximizable: false,
     title: "ScreenFlavor",
@@ -515,6 +545,7 @@ function createLauncher() {
 /** @param {string} gameId */
 function overlayEntryForGame(gameId) {
   if (gameId === "snail") return { html: "overlay.html", pollCursor: true };
+  if (gameId === "goblin") return { html: "goblin-overlay.html", pollCursor: true };
   return null;
 }
 
@@ -578,6 +609,21 @@ function createOverlay(gameId) {
         const pt = screen.getCursorScreenPoint();
         const rel = { x: pt.x - bounds.x, y: pt.y - bounds.y };
         overlay.webContents.send("cursor", rel);
+
+        if (activeGameId === "goblin") {
+          const r = goblinHitScreenRect;
+          if (r && r.w > 0 && r.h > 0) {
+            const pad = 12;
+            const inside =
+              pt.x >= r.x - pad &&
+              pt.x <= r.x + r.w + pad &&
+              pt.y >= r.y - pad &&
+              pt.y <= r.y + r.h + pad;
+            overlay.setIgnoreMouseEvents(!inside, { forward: true });
+          } else {
+            overlay.setIgnoreMouseEvents(true, { forward: true });
+          }
+        }
       }, tickMs);
     });
   }
@@ -589,6 +635,54 @@ ipcMain.handle("snail:getLaunchSettings", () => {
   const raw = pendingSnailSettings;
   pendingSnailSettings = null;
   return normalizeSnailLaunchSettings(raw);
+});
+
+ipcMain.on("goblin:hitRegion", (_e, rect) => {
+  if (activeGameId !== "goblin") {
+    goblinHitScreenRect = null;
+    return;
+  }
+  if (!rect || typeof rect !== "object") {
+    goblinHitScreenRect = null;
+    return;
+  }
+  const x = Number(rect.x);
+  const y = Number(rect.y);
+  const w = Number(rect.w);
+  const h = Number(rect.h);
+  if (![x, y, w, h].every((n) => Number.isFinite(n)) || w <= 0 || h <= 0) {
+    goblinHitScreenRect = null;
+    return;
+  }
+  goblinHitScreenRect = { x, y, w, h };
+});
+
+ipcMain.handle("desktop:shuffleOneIcon", async () => {
+  if (process.platform !== "win32") {
+    return { ok: false, skipped: true };
+  }
+  const scriptPath = path.join(__dirname, "shuffle-desktop-icon.ps1");
+  if (!fs.existsSync(scriptPath)) {
+    return { ok: false, message: "missing_script" };
+  }
+  return await new Promise((resolve) => {
+    execFile(
+      "powershell.exe",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath],
+      { timeout: 15000, windowsHide: true },
+      (err, stdout) => {
+        const out = (stdout || "").trim();
+        if (err || out !== "OK") {
+          resolve({
+            ok: false,
+            message: out || (err && /** @type {Error} */ (err).message) || "shuffle_failed",
+          });
+        } else {
+          resolve({ ok: true });
+        }
+      },
+    );
+  });
 });
 
 ipcMain.handle("game:start", (_e, gameId, snailSettings) => {
