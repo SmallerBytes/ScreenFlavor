@@ -264,19 +264,6 @@ body {
   color: var(--crt-cyan);
 }
 
-.hint {
-  margin: 0 auto;
-  max-width: 24rem;
-  text-align: center;
-  line-height: 1.45;
-  font-size: 1.05rem;
-  color: var(--crt-text-dim);
-}
-
-.hint strong {
-  color: var(--crt-amber);
-}
-
 button {
   font-family: var(--font-pixel);
   font-size: 0.48rem;

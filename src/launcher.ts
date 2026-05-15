@@ -69,14 +69,6 @@ app.innerHTML = `
       </article>
     </section>
 
-    <p class="hint">
-      <strong>The Snail</strong> stays in front of other windows so you always see it; your mouse still passes through
-      to apps below. <strong>The Goblin</strong> and <strong>The Egg</strong> sit in normal window order (other
-      windows can cover them). On The Egg, pass your cursor over each poop <strong>three times</strong> (in and out)
-      to clear it. The Goblin writes real <code>.txt</code> files to your Desktop — clean them up whenever you like.
-      Press <strong>Ctrl+Shift+Q</strong> (Mac: <strong>Cmd+Shift+Q</strong>) anytime to stop.
-    </p>
-
     <div class="last-run" id="last-run" aria-live="polite"></div>
 
     <div class="hub-footer">
