@@ -1,24 +1,16 @@
 import "./style.css";
+import { wireOverlayExit } from "./overlayExit";
 
-const GOBLIN_TIMEOUT_MS = 88_000;
-const HIT_PAD = 14;
 const BASE_PX = 78;
+const WALK_SPEED = 96; // px/sec across the desktop while wandering
 
-function pushHitRegion(el: HTMLElement | null) {
-  if (!el || el.classList.contains("goblin--hidden")) {
-    window.screenFlavor.setGoblinHitRegion(null);
-    return;
-  }
-  const r = el.getBoundingClientRect();
-  window.screenFlavor.setGoblinHitRegion({
-    x: window.screenX + r.left - HIT_PAD,
-    y: window.screenY + r.top - HIT_PAD,
-    w: r.width + HIT_PAD * 2,
-    h: r.height + HIT_PAD * 2,
-  });
+type Vec = { x: number; y: number };
+
+function rand(min: number, max: number) {
+  return min + Math.random() * (max - min);
 }
 
-function edgeSpawnOffscreen(w: number, h: number, margin: number) {
+function edgeSpawnOffscreen(w: number, h: number, margin: number): Vec {
   const edge = Math.floor(Math.random() * 4);
   const spanX = Math.max(0, w - 2 * margin);
   const spanY = Math.max(0, h - 2 * margin);
@@ -29,11 +21,24 @@ function edgeSpawnOffscreen(w: number, h: number, margin: number) {
   return { x: -out, y: margin + Math.random() * spanY };
 }
 
-function randomInner(w: number, h: number, margin: number) {
+function randomInner(w: number, h: number, margin: number): Vec {
   return {
     x: margin + Math.random() * Math.max(1, w - 2 * margin),
     y: margin + Math.random() * Math.max(1, h - 2 * margin),
   };
+}
+
+function spawnPaperPuff(stage: HTMLElement, at: Vec) {
+  const puff = document.createElement("div");
+  puff.className = "paper-drop";
+  puff.textContent = "📄";
+  puff.style.left = `${at.x}px`;
+  puff.style.top = `${at.y + 22}px`;
+  stage.appendChild(puff);
+  // Use the longest CSS animation duration (1100ms) to clean up.
+  window.setTimeout(() => {
+    puff.remove();
+  }, 1400);
 }
 
 function run() {
@@ -41,24 +46,15 @@ function run() {
   if (!root) throw new Error("Missing #overlay-root");
 
   root.innerHTML = `
+  <button type="button" class="overlay-exit" id="overlay-exit" aria-label="Exit to menu">×</button>
   <div class="overlay-stage" id="stage">
-    <div class="goblin goblin--hidden" id="goblin" aria-hidden="true">🧌</div>
-  </div>
-  <div class="hud" id="hud">The Goblin is scheming…</div>
-  <div class="lose-banner" id="end" hidden>
-    <div class="lose-inner">
-      <h2 id="end-title">Got away!</h2>
-      <p id="end-desc">The goblin slipped off your desktop.</p>
-    </div>
+    <div class="goblin goblin--passive goblin--hidden" id="goblin" aria-hidden="true">🧌</div>
   </div>`;
 
+  const stageEl = document.querySelector<HTMLDivElement>("#stage");
   const goblinEl = document.querySelector<HTMLDivElement>("#goblin");
-  const hudEl = document.querySelector<HTMLDivElement>("#hud");
-  const endEl = document.querySelector<HTMLDivElement>("#end");
-  const endTitle = document.querySelector<HTMLHeadingElement>("#end-title");
-  const endDesc = document.querySelector<HTMLParagraphElement>("#end-desc");
 
-  if (!goblinEl || !hudEl || !endEl || !endTitle || !endDesc) {
+  if (!stageEl || !goblinEl) {
     throw new Error("Goblin overlay DOM missing");
   }
 
@@ -70,151 +66,125 @@ function run() {
   goblinEl.style.fontSize = `${Math.round(BASE_PX * 0.72)}px`;
   goblinEl.style.lineHeight = `${BASE_PX}px`;
 
-  let ended = false;
+  const margin = Math.max(64, Math.min(140, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.1)));
+
+  let pos: Vec = edgeSpawnOffscreen(window.innerWidth, window.innerHeight, margin);
+  let target: Vec = randomInner(window.innerWidth, window.innerHeight, margin);
+
+  function layoutGoblin(p: Vec) {
+    goblinEl.style.left = `${p.x}px`;
+    goblinEl.style.top = `${p.y}px`;
+  }
+
+  function pickTarget(): Vec {
+    return randomInner(window.innerWidth, window.innerHeight, margin);
+  }
+
+  layoutGoblin(pos);
+  goblinEl.classList.remove("goblin--hidden");
+
+  // One .txt at a time. After each drop completes, wait a random stagger
+  // (15s, 45s, 1m, or 2m) — always at least 10s and never more than 3 minutes.
+  const STAGGER_CHOICES_MS = [15_000, 45_000, 60_000, 120_000] as const;
+  const MIN_GAP_MS = 10_000;
+  const MAX_GAP_MS = 3 * 60_000;
+
+  let pendingDrop = false;
+  let stopped = false;
+  const sessionStart = performance.now();
+
+  function nextDropDelayMs(): number {
+    const raw = STAGGER_CHOICES_MS[Math.floor(Math.random() * STAGGER_CHOICES_MS.length)];
+    return Math.min(MAX_GAP_MS, Math.max(MIN_GAP_MS, raw));
+  }
+
+  function scheduleDrop() {
+    if (stopped) return;
+    window.setTimeout(() => {
+      if (stopped) return;
+      pendingDrop = true;
+    }, nextDropDelayMs());
+  }
+
+  function performDrop() {
+    pendingDrop = false;
+    if (stageEl) spawnPaperPuff(stageEl, pos);
+    void window.screenFlavor
+      .dropGoblinTxtFile()
+      .then((res) => {
+        if (!res.ok) {
+          console.warn("[goblin] drop failed:", res.message || "unknown");
+        }
+      })
+      .catch((e) => {
+        console.warn("[goblin] drop threw:", e);
+      })
+      .finally(() => {
+        scheduleDrop();
+      });
+  }
+
+  scheduleDrop();
+
   let raf = 0;
-  const startAll = performance.now();
-  let phaseStart = startAll;
-  let phase: "wait" | "charge" | "loiter" = "wait";
-  let hasShuffled = false;
+  let lastTs = performance.now();
 
-  const waitMs = 650 + Math.random() * 1400;
-  const margin = Math.max(48, Math.min(120, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.08)));
+  function tick(now: number) {
+    if (stopped) return;
+    const dt = Math.min(0.05, (now - lastTs) / 1000);
+    lastTs = now;
 
-  let entry = { x: 0, y: 0 };
-  let target = { x: 0, y: 0 };
-  let chargeDuration = 1800;
+    const dx = target.x - pos.x;
+    const dy = target.y - pos.y;
+    const dist = Math.hypot(dx, dy);
 
-  function layoutGoblin(x: number, y: number) {
-    goblinEl.style.left = `${x}px`;
-    goblinEl.style.top = `${y}px`;
-  }
-
-  function finish(escaped: boolean, elapsedSec: number) {
-    if (ended) return;
-    ended = true;
-    cancelAnimationFrame(raf);
-    window.screenFlavor.setGoblinHitRegion(null);
-    goblinEl.classList.remove("goblin--idle");
-    if (escaped) {
-      goblinEl.classList.add("goblin--hidden");
-      endTitle.textContent = "Got away!";
-      endDesc.textContent = "The goblin ran off before you could spank him.";
-      endEl.hidden = false;
-      window.setTimeout(() => {
-        void window.screenFlavor.notifyGameOver(-Math.max(0.01, elapsedSec));
-      }, 1200);
-    }
-  }
-
-  let winNotified = false;
-  function notifyWin(elapsed: number) {
-    if (winNotified) return;
-    winNotified = true;
-    void window.screenFlavor.notifyGameOver(Math.max(0.05, elapsed));
-  }
-
-  goblinEl.addEventListener(
-    "pointerdown",
-    (ev) => {
-      if (ended || phase === "wait" || goblinEl.classList.contains("goblin--hidden")) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      ended = true;
-      cancelAnimationFrame(raf);
-      window.screenFlavor.setGoblinHitRegion(null);
-      goblinEl.classList.remove("goblin--idle");
-      goblinEl.classList.add("goblin--falling");
-      const elapsed = (performance.now() - startAll) / 1000;
-      const onDone = () => {
-        goblinEl.removeEventListener("transitionend", onDone);
-        notifyWin(elapsed);
-      };
-      goblinEl.addEventListener("transitionend", onDone);
-      window.setTimeout(() => notifyWin(elapsed), 950);
-    },
-    { capture: true },
-  );
-
-  async function tick(now: number) {
-    if (ended) return;
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const elapsed = (now - startAll) / 1000;
-
-    if (phase === "wait") {
-      if (now - phaseStart >= waitMs) {
-        phase = "charge";
-        phaseStart = now;
-        entry = edgeSpawnOffscreen(w, h, margin);
-        target = randomInner(w, h, margin);
-        const dist = Math.hypot(target.x - entry.x, target.y - entry.y);
-        chargeDuration = Math.min(3200, Math.max(1100, (dist / 420) * 1000));
-        goblinEl.classList.remove("goblin--hidden");
-        layoutGoblin(entry.x, entry.y);
-        hudEl.textContent = "Here he comes…";
-      } else {
-        hudEl.textContent = `${((waitMs - (now - phaseStart)) / 1000).toFixed(1)}s — watch the desktop…`;
-      }
+    if (dist < 6) {
+      pos = target;
+      target = pickTarget();
+      // Tiny pause feel — mirror the goblin a bit.
+      goblinEl.classList.toggle("goblin--mirror");
+    } else {
+      const step = Math.min(dist, WALK_SPEED * dt);
+      pos = { x: pos.x + (dx / dist) * step, y: pos.y + (dy / dist) * step };
     }
 
-    if (phase === "charge") {
-      const t = Math.min(1, (now - phaseStart) / chargeDuration);
-      const x = entry.x + (target.x - entry.x) * t;
-      const y = entry.y + (target.y - entry.y) * t;
-      layoutGoblin(x, y);
-      pushHitRegion(goblinEl);
+    layoutGoblin(pos);
 
-      if (!hasShuffled && t >= 0.68) {
-        hasShuffled = true;
-        void window.screenFlavor.shuffleDesktopIcon().then((res) => {
-          if (ended) return;
-          if (res.ok) {
-            hudEl.textContent = "He moved a desktop icon! Click him to spank him off!";
-          } else if (res.skipped) {
-            hudEl.textContent = "Click the goblin to spank him off! (Icon shuffle is Windows-only.)";
-          } else {
-            hudEl.textContent =
-              "Click the goblin to spank him off! (Could not nudge a desktop icon — Windows may be blocking it.)";
-          }
-        });
-      }
-
-      if (t >= 1) {
-        phase = "loiter";
-        phaseStart = now;
-        layoutGoblin(target.x, target.y);
-        goblinEl.classList.add("goblin--idle");
-      }
+    if (pendingDrop) {
+      performDrop();
     }
 
-    if (phase === "loiter") {
-      pushHitRegion(goblinEl);
-      hudEl.textContent = `${elapsed.toFixed(1)}s — spank the goblin!`;
-      if (now - startAll >= GOBLIN_TIMEOUT_MS) {
-        finish(true, (now - startAll) / 1000);
-        return;
-      }
-    }
-
-    if (!ended) {
-      raf = requestAnimationFrame(tick);
-    }
+    raf = requestAnimationFrame(tick);
   }
 
   raf = requestAnimationFrame(tick);
 
+  wireOverlayExit(() => {
+    if (stopped) return;
+    stopped = true;
+    cancelAnimationFrame(raf);
+    const elapsed = Math.max(0, (performance.now() - sessionStart) / 1000);
+    void window.screenFlavor.notifyGameOver(elapsed);
+  });
+
   window.addEventListener(
     "resize",
     () => {
-      if (ended || phase === "wait") return;
       const iw = window.innerWidth;
       const ih = window.innerHeight;
-      const gx = parseFloat(goblinEl.style.left) || 0;
-      const gy = parseFloat(goblinEl.style.top) || 0;
-      layoutGoblin(Math.min(iw - margin, Math.max(margin, gx)), Math.min(ih - margin, Math.max(margin, gy)));
+      pos.x = Math.min(iw - margin, Math.max(margin, pos.x));
+      pos.y = Math.min(ih - margin, Math.max(margin, pos.y));
+      target.x = Math.min(iw - margin, Math.max(margin, target.x));
+      target.y = Math.min(ih - margin, Math.max(margin, target.y));
+      layoutGoblin(pos);
     },
     { passive: true },
   );
+
+  window.addEventListener("beforeunload", () => {
+    stopped = true;
+    cancelAnimationFrame(raf);
+  });
 }
 
-void run();
+run();

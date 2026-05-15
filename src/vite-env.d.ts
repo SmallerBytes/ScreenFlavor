@@ -3,6 +3,7 @@ type CursorPos = { x: number; y: number };
 type LastRunPayload = {
   seconds: number;
   gameId: string | null;
+  dropped?: number;
 };
 
 export type SnailLaunchSettings = {
@@ -10,18 +11,19 @@ export type SnailLaunchSettings = {
   speedPercent: number;
 };
 
-export type DesktopShuffleResult = {
+export type GoblinDropResult = {
   ok: boolean;
-  skipped?: boolean;
+  path?: string;
+  name?: string;
   message?: string;
 };
 
-type GoblinHitRegion = { x: number; y: number; w: number; h: number };
+export type OverlayBounds = { x: number; y: number; width: number; height: number };
 
 type ScreenFlavorApi = {
   startGame: (gameId: string, snailSettings?: SnailLaunchSettings) => Promise<boolean>;
-  shuffleDesktopIcon: () => Promise<DesktopShuffleResult>;
-  setGoblinHitRegion: (rect: GoblinHitRegion | null) => void;
+  dropGoblinTxtFile: () => Promise<GoblinDropResult>;
+  getOverlayBounds: () => Promise<OverlayBounds | null>;
   getSnailLaunchSettings: () => Promise<SnailLaunchSettings>;
   quitApp: () => Promise<void>;
   getAppVersion: () => Promise<string>;

@@ -17,7 +17,8 @@ app.innerHTML = `
         <div class="game-icon" aria-hidden="true">🐌</div>
         <h2>The Snail</h2>
         <p class="game-blurb">
-          A snail appears on your screen and slowly homes in on your cursor. If it touches you, you lose.
+          A snail appears on your screen and slowly homes in on your cursor. If it touches you, you lose. The snail
+          stays <strong>above your other apps</strong> so you can always keep an eye on it.
         </p>
 
         <fieldset class="snail-settings">
@@ -45,17 +46,34 @@ app.innerHTML = `
         <div class="game-icon" aria-hidden="true">🧌</div>
         <h2>The Goblin</h2>
         <p class="game-blurb">
-          A goblin dashes in from the edge of your desktop, nudges a real shortcut to a new spot (Windows), then
-          dares you to click him. Spank him and he plummets off-screen.
+          A goblin scampers around your screen and starts <strong>leaving real .txt files on your Desktop</strong>
+          — silly names, goblin ASCII art, the works. One file at a time, spaced by a random wait (15s, 45s, 1 min,
+          or 2 min — never less than 10s or more than 3 min between drops). He keeps going until you stop him; the
+          files he left stay until you delete them yourself.
         </p>
         <button type="button" class="btn-play" id="goblin-start">Play</button>
+      </article>
+
+      <article class="game-card" data-game="egg">
+        <div class="game-icon" aria-hidden="true">🥚</div>
+        <h2>The Egg</h2>
+        <p class="game-blurb">
+          An egg sits on your desktop for <strong>one minute</strong>, then hatches into a duck. The duck grows through
+          three life stages (about five minutes each). It leaves poops to sweep away with your cursor and, once
+          grown, lays eggs that hatch into little chicks — <strong>those chicks age too</strong> (three short phases
+          while they’re on screen). When the duck becomes old, the <strong>last minute</strong> is a frozen,
+          glowing build-up, then a firework finale. <strong>Tiny worms</strong> wriggle out sometimes — the
+          <strong>three closest birds</strong> (the duck and any hatched chicks) sprint to eat them. Each poop needs <strong>three passes</strong> with your cursor (move over it, away, and repeat) before it goes away.
+        </p>
+        <button type="button" class="btn-play" id="egg-start">Play</button>
       </article>
     </section>
 
     <p class="hint">
-      While <strong>The Snail</strong> runs, your mouse still reaches apps underneath.
-      <strong>The Goblin</strong> only captures clicks on the goblin so you can swat him; desktop icon shuffle is
-      Windows-only.
+      <strong>The Snail</strong> stays in front of other windows so you always see it; your mouse still passes through
+      to apps below. <strong>The Goblin</strong> and <strong>The Egg</strong> sit in normal window order (other
+      windows can cover them). On The Egg, pass your cursor over each poop <strong>three times</strong> (in and out)
+      to clear it. The Goblin writes real <code>.txt</code> files to your Desktop — clean them up whenever you like.
       Press <strong>Ctrl+Shift+Q</strong> (Mac: <strong>Cmd+Shift+Q</strong>) anytime to stop.
     </p>
 
@@ -78,12 +96,14 @@ const snailSpeed = document.querySelector<HTMLInputElement>("#snail-speed");
 const snailSizeVal = document.querySelector<HTMLSpanElement>("#snail-size-val");
 const snailSpeedVal = document.querySelector<HTMLSpanElement>("#snail-speed-val");
 const goblinStart = document.querySelector<HTMLButtonElement>("#goblin-start");
+const eggStart = document.querySelector<HTMLButtonElement>("#egg-start");
 
 if (
   !lastRun ||
   !btnQuit ||
   !snailPlay ||
   !goblinStart ||
+  !eggStart ||
   !appVersionEl ||
   !snailSize ||
   !snailSpeed ||
@@ -116,11 +136,35 @@ goblinStart.addEventListener("click", async () => {
   await window.screenFlavor.startGame("goblin");
 });
 
+eggStart.addEventListener("click", async () => {
+  await window.screenFlavor.startGame("egg");
+});
+
 btnQuit.addEventListener("click", async () => {
   await window.screenFlavor.quitApp();
 });
 
-window.screenFlavor.onLastRun(({ seconds, gameId }) => {
+window.screenFlavor.onLastRun(({ seconds, gameId, dropped }) => {
+  if (gameId === "egg") {
+    const s = seconds.toFixed(1);
+    if (seconds <= 0.05) {
+      lastRun.textContent = "";
+      return;
+    }
+    lastRun.textContent = `The Egg — last run: ${s}s on the clock (Ctrl+Shift+Q stops early).`;
+    return;
+  }
+  if (gameId === "goblin") {
+    const n = typeof dropped === "number" ? dropped : 0;
+    if (n <= 0) {
+      lastRun.textContent = "The Goblin — he didn't get a chance to drop anything.";
+    } else if (n === 1) {
+      lastRun.textContent = "The Goblin — he left 1 .txt file on your Desktop.";
+    } else {
+      lastRun.textContent = `The Goblin — he left ${n} .txt files on your Desktop.`;
+    }
+    return;
+  }
   const s = seconds.toFixed(1);
   if (seconds <= 0.05) {
     lastRun.textContent = "";
@@ -128,14 +172,6 @@ window.screenFlavor.onLastRun(({ seconds, gameId }) => {
   }
   if (gameId === "snail") {
     lastRun.textContent = `The Snail — last run: you survived ${s}s.`;
-    return;
-  }
-  if (gameId === "goblin") {
-    if (seconds < 0) {
-      lastRun.textContent = `The Goblin — he got away after ${(-seconds).toFixed(1)}s. Try again!`;
-    } else {
-      lastRun.textContent = `The Goblin — spanked in ${s}s!`;
-    }
     return;
   }
   lastRun.textContent = `Last run: ${s}s.`;

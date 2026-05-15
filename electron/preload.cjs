@@ -3,8 +3,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("screenFlavor", {
   startGame: (gameId, snailSettings) =>
     ipcRenderer.invoke("game:start", gameId, snailSettings),
-  shuffleDesktopIcon: () => ipcRenderer.invoke("desktop:shuffleOneIcon"),
-  setGoblinHitRegion: (rect) => ipcRenderer.send("goblin:hitRegion", rect),
+  dropGoblinTxtFile: () => ipcRenderer.invoke("goblin:dropTxtFile"),
+  getOverlayBounds: () => ipcRenderer.invoke("overlay:getBounds"),
   getSnailLaunchSettings: () => ipcRenderer.invoke("snail:getLaunchSettings"),
   quitApp: () => ipcRenderer.invoke("app:quit"),
   getAppVersion: () => ipcRenderer.invoke("app:getVersion"),

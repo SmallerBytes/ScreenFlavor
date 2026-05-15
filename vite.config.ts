@@ -22,6 +22,7 @@ export default defineConfig({
         main: resolve(__dirname, "index.html"),
         overlay: resolve(__dirname, "overlay.html"),
         goblinOverlay: resolve(__dirname, "goblin-overlay.html"),
+        eggOverlay: resolve(__dirname, "egg-overlay.html"),
       },
     },
   },

@@ -1,4 +1,5 @@
 import "./style.css";
+import { wireOverlayExit } from "./overlayExit";
 import type { SnailLaunchSettings } from "./vite-env";
 
 document.documentElement.classList.add("overlay");
@@ -31,6 +32,7 @@ async function run() {
   if (!root) throw new Error("Missing #overlay-root");
 
   root.innerHTML = `
+  <button type="button" class="overlay-exit" id="overlay-exit" aria-label="Exit to menu">×</button>
   <div class="overlay-stage" id="stage">
     <div class="snail" id="snail" aria-hidden="true"></div>
   </div>
@@ -125,6 +127,17 @@ async function run() {
       void window.screenFlavor.notifyGameOver(survived);
     }, 1600);
   }
+
+  function exitToMenu() {
+    if (ended) return;
+    ended = true;
+    cancelAnimationFrame(raf);
+    unsubCursor();
+    const survived = playing ? Math.max(0, (performance.now() - start) / 1000) : 0;
+    void window.screenFlavor.notifyGameOver(survived);
+  }
+
+  wireOverlayExit(exitToMenu);
 
   function tick(now: number) {
     if (ended || !playing) return;
