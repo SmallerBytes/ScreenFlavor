@@ -30,6 +30,8 @@ let launcher = null;
 let overlay = null;
 /** @type {NodeJS.Timeout | null} */
 let cursorTimer = null;
+/** @type {NodeJS.Timeout | null} */
+let displaySyncTimer = null;
 /** @type {string | null} */
 let activeGameId = null;
 
@@ -73,6 +75,10 @@ function distFile(file) {
 
 function unionDisplayBounds() {
   const displays = screen.getAllDisplays();
+  if (displays.length === 0) {
+    const p = screen.getPrimaryDisplay();
+    return { x: p.bounds.x, y: p.bounds.y, width: p.bounds.width, height: p.bounds.height };
+  }
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -85,6 +91,28 @@ function unionDisplayBounds() {
     maxY = Math.max(maxY, b.y + b.height);
   }
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+/** Resize/reposition the game overlay to cover every connected display. */
+function syncOverlayToDisplays() {
+  if (!overlay || overlay.isDestroyed()) return;
+  const bounds = unionDisplayBounds();
+  if (!Number.isFinite(bounds.width) || bounds.width < 1 || bounds.height < 1) return;
+  overlay.setBounds(bounds);
+}
+
+function scheduleOverlayDisplaySync() {
+  if (displaySyncTimer) clearTimeout(displaySyncTimer);
+  displaySyncTimer = setTimeout(() => {
+    displaySyncTimer = null;
+    syncOverlayToDisplays();
+  }, 120);
+}
+
+function installDisplayLayoutListeners() {
+  screen.on("display-added", scheduleOverlayDisplaySync);
+  screen.on("display-removed", scheduleOverlayDisplaySync);
+  screen.on("display-metrics-changed", scheduleOverlayDisplaySync);
 }
 
 function stopCursorPoll() {
@@ -610,7 +638,13 @@ function createOverlay(gameId) {
   }
 
   overlay.once("ready-to-show", () => {
+    syncOverlayToDisplays();
     overlay.show();
+    // Windows often needs a second bounds pass after show for multi-monitor / DPI layouts.
+    setImmediate(() => {
+      if (!overlay || overlay.isDestroyed()) return;
+      syncOverlayToDisplays();
+    });
     overlay.setIgnoreMouseEvents(true, { forward: true });
   });
 
@@ -631,8 +665,16 @@ function createOverlay(gameId) {
       cursorTimer = setInterval(() => {
         if (!overlay || overlay.isDestroyed()) return;
         const pt = screen.getCursorScreenPoint();
-        const b = overlay.getBounds();
-        const rel = { x: pt.x - b.x, y: pt.y - b.y };
+        const content = overlay.getContentBounds();
+        const rel = { x: pt.x - content.x, y: pt.y - content.y };
+        if (
+          rel.x < -16 ||
+          rel.y < -16 ||
+          rel.x > content.width + 16 ||
+          rel.y > content.height + 16
+        ) {
+          scheduleOverlayDisplaySync();
+        }
         overlay.webContents.send("cursor", rel);
         // Must match `.overlay-exit` in `src/style.css` (bottom/right/size) so the × is clickable while the rest stays click-through.
         const exBottomPad = 8;
@@ -640,12 +682,12 @@ function createOverlay(gameId) {
         const exW = 40;
         const exH = 36;
         const inExit =
-          b.width > 80 &&
-          b.height > 80 &&
-          rel.x >= b.width - exRightPad - exW &&
-          rel.x < b.width &&
-          rel.y >= b.height - exBottomPad - exH &&
-          rel.y < b.height;
+          content.width > 80 &&
+          content.height > 80 &&
+          rel.x >= content.width - exRightPad - exW &&
+          rel.x < content.width &&
+          rel.y >= content.height - exBottomPad - exH &&
+          rel.y < content.height;
         overlay.setIgnoreMouseEvents(!inExit, { forward: true });
       }, tickMs);
     });
@@ -1102,6 +1144,7 @@ ipcMain.on("update-progress-close", () => {
 });
 
 app.whenReady().then(() => {
+  installDisplayLayoutListeners();
   installAppMenu();
   createLauncher();
 });
@@ -1114,5 +1157,9 @@ app.on("window-all-closed", () => {
 
 app.on("will-quit", () => {
   stopCursorPoll();
+  if (displaySyncTimer) {
+    clearTimeout(displaySyncTimer);
+    displaySyncTimer = null;
+  }
   globalShortcut.unregisterAll();
 });

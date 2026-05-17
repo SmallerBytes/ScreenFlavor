@@ -60,8 +60,8 @@ app.innerHTML = `
         <p class="game-blurb">
           An egg sits on your desktop for <strong>one minute</strong>, then hatches into a duck. The duck grows through
           three life stages (about five minutes each). It leaves poops to sweep away with your cursor and, once
-          grown, lays eggs that hatch into little chicks — <strong>those chicks age too</strong> (three short phases
-          while they’re on screen). When the duck becomes old, the <strong>last minute</strong> is a frozen,
+          grown, lays eggs that hatch into ducks that <strong>grow up, stay on screen, and lay their own eggs</strong>.
+          When the duck becomes old, the <strong>last minute</strong> is a frozen,
           glowing build-up, then a firework finale. <strong>Tiny worms</strong> wriggle out sometimes — the
           <strong>three closest birds</strong> (the duck and any hatched chicks) sprint to eat them. Each poop needs <strong>three passes</strong> with your cursor (move over it, away, and repeat) before it goes away.
         </p>

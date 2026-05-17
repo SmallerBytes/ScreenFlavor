@@ -17,8 +17,8 @@ const MAX_POOPS = 40;
 const POOP_PASSES_TO_CLEAR = 3;
 const WORM_EAT_RADIUS = 38;
 const WORM_CHASE_SPEED = 78;
-const DUCKLING_LIFETIME_MS = 65_000;
-const DUCKLING_PHASE_MS = DUCKLING_LIFETIME_MS / 3;
+/** Time per growth tier for hatched ducks (chick → juvenile → adult); they stay for the whole run. */
+const DUCKLING_GROWTH_PHASE_MS = 22_000;
 /** Old duck stands still and glows for the last minute before fireworks. */
 const PRE_EXPLODE_CHARGE_MS = 60_000;
 
@@ -100,6 +100,8 @@ function run() {
     pos: Vec;
     target: Vec;
     born: number;
+    /** When this bird will lay an egg; 0 until juvenile+. */
+    nextLayAt: number;
   };
   const ducklings: Duckling[] = [];
   let nextDucklingId = 1;
@@ -161,8 +163,8 @@ function run() {
   }
 
   function ducklingLifeStage(ageMs: number): 1 | 2 | 3 {
-    if (ageMs < DUCKLING_PHASE_MS) return 1;
-    if (ageMs < 2 * DUCKLING_PHASE_MS) return 2;
+    if (ageMs < DUCKLING_GROWTH_PHASE_MS) return 1;
+    if (ageMs < 2 * DUCKLING_GROWTH_PHASE_MS) return 2;
     return 3;
   }
 
@@ -217,14 +219,14 @@ function run() {
     poops.push({ el, x, y, passes: 0, cursorInside: false });
   }
 
-  function spawnLaidEgg() {
+  function spawnLaidEgg(from: Vec) {
     const el = document.createElement("div");
     el.className = "laid-egg";
     el.textContent = "🥚";
     const ox = rand(-40, 40);
     const oy = rand(28, 55);
-    const x = Math.min(window.innerWidth - 30, Math.max(30, duckPos.x + ox));
-    const y = Math.min(window.innerHeight - 30, Math.max(30, duckPos.y + oy));
+    const x = Math.min(window.innerWidth - 30, Math.max(30, from.x + ox));
+    const y = Math.min(window.innerHeight - 30, Math.max(30, from.y + oy));
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
     stageEl.appendChild(el);
@@ -252,6 +254,7 @@ function run() {
       pos,
       target: randomInner(window.innerWidth, window.innerHeight, margin),
       born: performance.now(),
+      nextLayAt: 0,
     });
   }
 
@@ -459,9 +462,9 @@ function run() {
         st === 1
           ? "Chick — sweep poops (three passes each). Tiny worms appear; the three closest birds run to eat them."
           : st === 2
-            ? "Young duck — bright colors; worms for snacks (three closest birds). Laid eggs hatch into aging chicks."
+            ? "Young duck — bright colors; worms for snacks (three closest birds). Laid eggs hatch into ducks that grow up and lay more."
             : st === 3
-              ? "Old duck — worms still draw the three nearest birds. Grand finale soon…"
+              ? "Old duck — the flock keeps growing. Grand finale soon…"
               : "";
     }
 
@@ -511,7 +514,7 @@ function run() {
       }
 
       if ((st === 2 || st === 3) && now >= nextLayAt) {
-        spawnLaidEgg();
+        spawnLaidEgg(duckPos);
         nextLayAt = now + rand(18_000, 38_000);
       }
     }
@@ -522,14 +525,21 @@ function run() {
       }
     }
 
-    for (let i = ducklings.length - 1; i >= 0; i--) {
-      const d = ducklings[i];
-      if (now - d.born > DUCKLING_LIFETIME_MS) {
-        d.el.remove();
-        ducklings.splice(i, 1);
-        continue;
-      }
+    for (const d of ducklings) {
       syncDuckling(d, now);
+      const dlStage = ducklingLifeStage(now - d.born);
+      if (
+        !boomTriggered &&
+        !preExploding &&
+        dlStage >= 2
+      ) {
+        if (d.nextLayAt === 0) {
+          d.nextLayAt = now + rand(10_000, 24_000);
+        } else if (now >= d.nextLayAt) {
+          spawnLaidEgg(d.pos);
+          d.nextLayAt = now + rand(24_000, 48_000);
+        }
+      }
       const wormDl = worms.find((w) => w.chasers.includes(d.id)) ?? null;
       if (wormDl) {
         const wx = wormDl.x - d.pos.x;
@@ -572,6 +582,13 @@ function run() {
       duckTarget.x = Math.min(window.innerWidth - margin, Math.max(margin, duckTarget.x));
       duckTarget.y = Math.min(window.innerHeight - margin, Math.max(margin, duckTarget.y));
       layoutDuck(duckPos);
+      for (const d of ducklings) {
+        d.pos.x = Math.min(window.innerWidth - margin, Math.max(margin, d.pos.x));
+        d.pos.y = Math.min(window.innerHeight - margin, Math.max(margin, d.pos.y));
+        d.target.x = Math.min(window.innerWidth - margin, Math.max(margin, d.target.x));
+        d.target.y = Math.min(window.innerHeight - margin, Math.max(margin, d.target.y));
+        layoutMini(d.el, d.pos);
+      }
     },
     { passive: true },
   );
